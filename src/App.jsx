@@ -9,7 +9,7 @@ const RES_KEY = "ft_resistance";
 
 const FLASK_API = "https://tkikrata.pythonanywhere.com";
 
-const modes = ["Manual", "Auto"];
+const modes = ["Normal", "Auto"];
 
 function loadRecs() {
   try {
