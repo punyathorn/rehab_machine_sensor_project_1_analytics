@@ -7,7 +7,7 @@ import Timer from "./components/Timer";
 const STORAGE_KEY = "ft_recs";
 const RES_KEY = "ft_resistance";
 
-const FLASK_API = "http://tkikrata.pythonanywhere.com";
+const FLASK_API = "https://tkikrata.pythonanywhere.com";
 
 const modes = ["Manual", "Auto"];
 
