@@ -15,15 +15,53 @@ function formatDuration(sec) {
   return `${m} m ${s} s`;
 }
 
+const quotes = [
+  "67% effort today > 0% yesterday.",
+  "Bro did 3 reps and called it character development.",
+  "If reps were free, why you still broke?",
+  "0 reps detected. Motivation.exe not found.",
+  "Gym arc loading… 12% complete.",
+  "One more rep = +1 aura.",
+  "Skipping workout? That’s a -10 discipline debuff.",
+  "You: 0 - Droppy: 100. Ouch.",
+  "Bro opened the gym app. That’s already +5 XP.",
+  "No reps? NPC behavior.",
+  "Bro opened the app. That's already +5 XP.",
+  "One more rep = +1 aura.",
+  "Locked in. 67% discipline. 33% delusion.",
+  "Gym arc. No refunds.",
+  "One rep today, stronger tomorrow. Keep going.",
+  "Just one more rep. Your future ankle said thanks.",
+  "No reps? No progress. Do the reps. Become unstoppable.",
+  "Every rep upgrades your firmware.",
+  "Small reps. Big comeback.",
+  "Lock in. One more rep. The ankle arc begins.",
+  "Small reps today. Big steps tomorrow.",
+  "One more rep. Future you will thank you.",
+  "Lock in. The ankle arc begins.",
+  "Reps today, stronger tomorrow.",
+  "No reps? No progress.",
+  "Every rep upgrades your firmware.",
+  "Pain is temporary. Strong ankles are forever.",
+  "Keep going. Your future walk depends on it.",
+  "Just one more rep. Trust the process.",
+  "Consistency beats intensity."
+];
 
+function getRandomQuote() {
+  return quotes[Math.floor(Math.random() * quotes.length)];
+}
 
 export default function Summary({ recs }) {
   const total = recs.length;
-
+  const [quote] = React.useState(getRandomQuote);
   if (total === 0) {
     return (
       <div className="card">
         <h2>Summary</h2>
+            <div className="streak">
+        <p className="quote">"{quote}"</p>
+      </div>
         <p className="empty">No records yet.</p>
       </div>
     );
@@ -56,7 +94,7 @@ export default function Summary({ recs }) {
         <h2>Summary</h2>
 
     <div className="streak">
-      <p>🔥 Day Streak: {streak} </p>
+      <p className="quote">"{quote}"</p>
     </div>
       
 
