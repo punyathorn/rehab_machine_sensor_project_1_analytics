@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import ResistanceControl from "./components/ResistanceControl";
 import RecordsTable from "./components/RecordsTable";
 import Summary from "./components/Summary";
-import { supabase } from "./supabaseClient";
 import Timer from "./components/Timer";
 
 const STORAGE_KEY = "ft_recs";
@@ -62,19 +61,6 @@ export default function App() {
     };
 
     setRecs((r) => [newRec, ...r]);
-  }
-
-  // fetch records
-  async function fetchRecs() {
-    const { data, error } = await supabase
-      .from("rehab_sessions")
-      .select("*")
-      .order("date", { ascending: false });
-
-    if (!error) {
-    console.log("Supabase Data:", data); // Check if the property is duration_sec or something else
-    setRecs(data);
-    }
   }
 
   // RESISTANCE
