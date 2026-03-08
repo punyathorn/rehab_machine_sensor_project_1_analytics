@@ -9,7 +9,7 @@ export default function ResistanceControl({ value, onChange, confirmedValue, onC
       <h2>Machine Resistance</h2>
 
       <p className="normal_text">
-        Current Resistance level: {isConfirmed ? confirmedValue : "1"}
+        Current Resistance level: {isConfirmed ? confirmedValue : "-"}
         {isConfirmed && <span className="tick"> ✅</span>}
       </p>
 
