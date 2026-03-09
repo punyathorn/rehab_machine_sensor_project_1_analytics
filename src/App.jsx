@@ -1,313 +1,106 @@
 import React, { useEffect, useState } from "react";
-import ResistanceControl from "./components/ResistanceControl";
-import RecordsTable from "./components/RecordsTable";
 import Summary from "./components/Summary";
-import Timer from "./components/Timer";
-
-const STORAGE_KEY = "ft_recs";
-const RES_KEY = "ft_resistance";
-
-const FLASK_API = "https://tkikrata.pythonanywhere.com";
-
-const modes = ["Normal", "Auto"];
-
-function loadRecs() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveRecs(recs) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(recs));
-}
+import { supabase } from "./supabaseClient";
+import AngleChart from "./components/AngleChart";
+import AngleTable from "./components/AngleTable";
 
 export default function App() {
 
-  const [recs, setRecs] = useState(loadRecs);
-  const [mode, setMode] = useState(modes[0]);
+  const [recs, setRecs] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
 
-  const [resistance, setResistance] = useState(() => {
-    const v = localStorage.getItem(RES_KEY);
-    return v ? Number(v) : 5;
-  });
+  // fetch all available session IDs
+  async function fetchSessions() {
+    const { data, error } = await supabase
+      .from("session_data")
+      .select("session_id")
+      .not("session_id", "is", null)
+      .order("session_id", { ascending: false });
 
-  const [confirmedRes, setConfirmedRes] = useState(null);
-  const [confirmedMode, setConfirmedMode] = useState(null);
-
-  const [showHomePopup, setShowHomePopup] = useState(false);
-  const [showSessionPopup, setShowSessionPopup] = useState(false);
-
-  useEffect(() => saveRecs(recs), [recs]);
-  useEffect(() => localStorage.setItem(RES_KEY, String(resistance)), [resistance]);
-
-  function addRecFromTimer({ mode, durationSec, stoppedAt }) {
-    // ✅ only allow recording when confirmed
-    if (confirmedRes == null) {
-      alert("Please confirm a resistance level before recording.");
+    if (error) {
+      console.error(error);
       return;
     }
 
-    const newRec = {
-      id: Date.now(),
-      mode,
-      reps: 0,
-      rounds: 0,
-      resistance: confirmedRes, // ✅ confirmed only
-      duration_sec: durationSec,
-      date: new Date(stoppedAt).toISOString(),
-    };
+    const uniqueSessions = [...new Set(data.map(r => r.session_id))];
+    setSessions(uniqueSessions);
 
-    setRecs((r) => [newRec, ...r]);
-  }
-
-  // RESISTANCE
-  async function confirmResistance(val) {
-    try {
-
-      await fetch(`${FLASK_API}/resis`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ resistance: val })
-      });
-
-      setConfirmedRes(val);
-
-    } catch {
-      alert("Failed to send resistance");
+    if (uniqueSessions.length && sessionId === null) {
+      setSessionId(uniqueSessions[0]); // latest session
     }
   }
 
-  // SESSION MODE
-  async function sendSession() {
-    try {
+  // fetch rows for a specific session
+  async function fetchSessionData(session) {
+    const { data, error } = await supabase
+      .from("session_data")
+      .select("*")
+      .eq("session_id", session)
+      .order("date", { ascending: true });
 
-      await fetch(`${FLASK_API}/mode`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ mode: mode })
-      });
-
-      setConfirmedMode(mode);
-      setShowSessionPopup(false);
-
-      alert("Workout mode set");
-
-    } catch {
-      alert("Failed to set workout mode");
+    if (error) {
+      console.error(error);
+      return;
     }
+    console.log("Fetched session data:", data);
+    setRecs(data || []);
   }
 
-  const [isRunning, setIsRunning] = useState(false);
+  // load sessions when app starts
+  useEffect(() => {
+    fetchSessions();
+  }, []);
 
-  async function startSession() {
-    const res = await fetch(`${FLASK_API}/start`, { method: "POST" });
-    if (res.ok) setIsRunning(true);
-  }
-
-  async function stopSession() {
-  setIsRunning(false);
-  try {
-    const res = await fetch(`${FLASK_API}/stop`, { method: "POST" });
-    const data = await res.json();
-    console.log("Session Data:", data); // Check the structure of the returned data
-    // Check if the backend returned an array of records
-    if (Array.isArray(data.result)) {
-      setRecs((prevRecs) => [...data.result, ...prevRecs]);
-    } else if (data.result) {
-      setRecs((prevRecs) => [data.result, ...prevRecs]);
+  // reload data when session changes
+  useEffect(() => {
+    if (sessionId !== null) {
+      fetchSessionData(sessionId);
     }
-  } catch (err) {
-    console.error("Error processing session data:", err);
-  }
-}
-
-  // HOMING
-  async function sendHome() {
-    try {
-
-      await fetch(`${FLASK_API}/home`, {
-        method: "POST"
-      });
-
-      alert("Machine homing started");
-      setShowHomePopup(false);
-
-    } catch {
-      alert("Failed to home machine");
-    }
-  }
+  }, [sessionId]);
 
   return (
-
     <div className="app">
 
       <header className="header">
         <h1>Droppy</h1>
-        <p className="subtitle" style={{ fontStyle: "italic" }}>
+        <p className="subtitle">
           Dashboard for Foot Drop Rehabilitation Machine
         </p>
+
+        {/* session selector */}
+        <div className="session-select">
+          <label>Session:</label>
+
+          <select
+            value={sessionId || ""}
+            onChange={(e) => setSessionId(Number(e.target.value))}
+          >
+            {sessions.map(id => (
+              <option key={id} value={id}>
+                {id}
+              </option>
+            ))}
+          </select>
+        </div>
+
       </header>
 
       <main className="container">
 
-        <section className="summary">
+        <div className="card">
           <Summary recs={recs} />
-        </section>
+        </div>
 
-        {/* MODE */}
+        <div className="card">
+          <AngleChart recs={recs} />
+        </div>
 
-        <section className="mode">
-
-          <div className="card">
-
-            <h2>Workout Mode</h2>
-
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-            >
-              {modes.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-
-            <button
-              className="btn confirm"
-              onClick={() => setShowSessionPopup(true)}
-            >
-              Confirm
-            </button>
-
-            {confirmedMode && (
-              <p className="confirmed">
-                Current Mode: <b>{confirmedMode}</b>
-              </p>
-            )}
-
-          </div>
-        </section>
-        <section className="timer">
-          <Timer isRunning={isRunning} onStart={startSession} onStop={stopSession} />
-        </section>
-
-        {/* RESISTANCE */}
-
-        <section className="controls">
-
-          <ResistanceControl
-            value={resistance}
-            onChange={setResistance}
-            confirmedValue={confirmedRes}
-            onConfirm={confirmResistance}
-          />
-
-        </section>
-        <section className="homing">
-           <div className="card">
-              <h2>Motor Homing</h2>
-                <button className="btn danger"
-                        onClick={() => setShowHomePopup(true)}>
-              Home Machine
-            </button>
-            </div>
-        </section>
-        {/* RECORDS */}
-
-        <section className="recs">
-          <RecordsTable
-            recs={recs}
-            setRecs={setRecs}
-          />
-        </section>
+        <div className="card">
+          <AngleTable recs={recs} />
+        </div>
 
       </main>
-
-      {/* SESSION CONFIRM POPUP */}
-
-      {showSessionPopup && (
-
-        <div className="modal">
-
-          <div className="modal-box">
-
-            <h2>Confirm Session</h2>
-
-            <p>
-              Start session in <b>{mode}</b> mode?
-            </p>
-
-            <div className="btn-row">
-
-              <button
-                className="btn"
-                onClick={() => setShowSessionPopup(false)}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="btn confirm"
-                onClick={sendSession}
-              >
-                Confirm
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* HOMING POPUP */}
-
-      {showHomePopup && (
-
-        <div className="modal">
-
-          <div className="modal-box">
-
-            <h2>Confirm Homing</h2>
-
-            <p>Are you sure you want to home the machine?</p>
-
-            <p style={{ color: "red" }}>
-              Ensure the patient's foot is removed.
-            </p>
-
-            <div className="btn-row">
-
-              <button
-                className="btn"
-                onClick={() => setShowHomePopup(false)}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="btn danger"
-                onClick={sendHome}
-              >
-                Confirm
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
 
     </div>
   );
